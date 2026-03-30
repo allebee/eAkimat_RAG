@@ -1,0 +1,118 @@
+{
+  "Бюджетное планирование": {
+    "Лимиты": {
+      "video_url": "https://www.youtube.com/watch?v=sQk4ezt3b8Q&ab_channel=eAkimat365"
+    },
+    "Бюджетные запросы": {
+      "Свод по АБП/ГУ/ГККП": {
+        "video_url": "https://www.youtube.com/watch?v=GzjaSix006s&ab_channel=eAkimat365",
+        "children": {
+          "Свод по АБП": {
+            "video_url": "https://www.youtube.com/watch?v=GJ53ukld0_s&feature=youtu.be"
+          },
+          "Свод по ГУ": {
+            "video_url": "https://www.youtube.com/watch?v=a9ufz7_NfuY&feature=youtu.be"
+          }
+        }
+      },
+      "Форма расчетов": {
+        "video_url": "https://www.youtube.com/watch?v=r0vhgW3alQE&list=PL4jwFLRAXDimzcqnIRqROqSLzYREpiYZX&index=11"
+      },
+      "Произвольная форма": {
+        "video_url": "https://www.youtube.com/watch?v=xuVe3ndLwYo&list=PLUYA3x6vanEqOeXjbMlWKU4KQVsgWBpbM&index=7"
+      },
+      "Штатное расписание": {
+        "video_url": "https://www.youtube.com/watch?v=0YDfPnUejeg&list=PL4jwFLRAXDin-5KQiIzRDPloySgGNkOVg&index=12"
+      },
+      "Бюджетные инвестиционные проекты": {
+        "video_url": "https://www.youtube.com/watch?v=z4H_ozpMSq4"
+      },
+      "Бюджетные программы": {
+        "video_url": "https://www.youtube.com/watch?v=btpCmqzFcnw&ab_channel=eAkimat365"
+      },
+      "Лимиты ГУ/ГККП": {
+        "video_url": "https://www.youtube.com/watch?v=hFNIUBw-cgI"
+      },
+      "Формирование": {
+        "children": {
+          "Текущие расходы": {
+            "video_url": "https://www.youtube.com/watch?v=LsEJju6_vxg&list=PL4jwFLRAXDimzcqnIRqROqSLzYREpiYZX&index=6&ab_channel=eAkimat365"
+          },
+          "Доходы": {
+            "video_url": "https://www.youtube.com/watch?v=JAECWFC54lw&list=PL4jwFLRAXDimzcqnIRqROqSLzYREpiYZX&index=5&ab_channel=eAkimat365"
+          }
+        }
+      },
+      "Корректировка": {
+        "video_url": "https://www.youtube.com/watch?v=W6N95NAY3QU&list=PL4jwFLRAXDimzcqnIRqROqSLzYREpiYZX&index=8&ab_channel=eAkimat365"
+      },
+      "ПКФО": {
+        "children": {
+          "ПКФО АБП": {
+            "video_url": "https://www.youtube.com/watch?v=wM_FcyTktEY&ab_channel=eAkimat365"
+          }
+        }
+      }
+    }
+  },
+  "Исполнение бюджета": {
+    "Формирование": {
+      "Индивидуальный план финансирования": {
+        "video_url": "https://www.youtube.com/watch?v=1LU3cm020mo&ab_channel=eAkimat365"
+      },
+      "План финансирования": {
+        "video_url": "https://www.youtube.com/watch?v=FnQUHdAF9pI&ab_channel=eAkimat365"
+      }
+    },
+    "Заявки на внесение изменений": {
+      "План финансирования": {
+        "video_url": "https://www.youtube.com/watch?v=CGiAemApGt8&feature=youtu.be"
+      },
+      "Заявки ГУ": {
+        "video_url": "https://www.youtube.com/watch?v=r7xD_ZUzzIs&ab_channel=eAkimat365"
+      },
+      "Справки(расходы)": {
+        "video_url": "https://www.youtube.com/watch?v=f3Wqet3K6Ck&ab_channel=eAkimat365"
+      },
+      "Уточненный план": {
+        "video_url": "https://www.youtube.com/watch?v=6OR4ztOq9mU&ab_channel=eAkimat365"
+      }
+    },
+    "Мониторинг исполнения": {
+      "Уточненный план": {
+        "video_url": "https://www.youtube.com/watch?v=HHZv7tKh3cM&ab_channel=eAkimat365"
+      },
+      "Отчеты": {
+        "video_url": "https://www.youtube.com/watch?v=SGkSI0WXxh4&ab_channel=eAkimat365"
+      },
+      "Конструктор отчетов": {
+        "video_url": "https://www.youtube.com/watch?v=6dlWzbD_HSM&list=PL4jwFLRAXDike08HbW8D0DCoto5a5TgP1&index=22&ab_channel=eAkimat365"
+      },
+      "Формы ввода": {
+        "video_url": "https://www.youtube.com/watch?v=vUSdU5DjWwU&ab_channel=eAkimat365"
+      }
+    },
+    "Аналитика исполнения": {
+      "Аналитика(СВОД)": {
+        "video_url": "https://www.youtube.com/watch?v=fxFrcB41vxw&ab_channel=eAkimat365"
+      },
+      "Анализ бюджета области": {
+        "video_url": "https://www.youtube.com/watch?v=Wub1rm7A_Ho&list=PL4jwFLRAXDike08HbW8D0DCoto5a5TgP1&index=21&ab_channel=eAkimat365"
+      }
+    }
+  },
+  "Медиамониторинг": {
+    "Аналитика исполнения": {
+      "Анализ бюджета области": {
+        "video_url": "https://www.youtube.com/watch?v=sLAfl1TFONE&ab_channel=eAkimat365"
+      }
+    }
+  },
+  "Личный кабинет": {
+    "Подписанты": {
+      "Анализ бюджета области": {
+        "video_url": "https://www.youtube.com/watch?v=tiCEv958CQ8&list=PL4jwFLRAXDimzcqnIRqROqSLzYREpiYZX&index=4&ab_channel=eAkimat365"
+      }
+    }
+  }
+}

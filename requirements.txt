@@ -1,0 +1,30 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic-settings==2.7.1
+
+# LLM & Agent
+langchain==0.3.14
+langchain-openai==0.3.0
+langchain-community==0.3.14
+langgraph==0.2.60
+openai==1.58.1
+
+# Vector store
+chromadb==0.5.23
+
+# PDF processing
+PyMuPDF==1.25.1
+Pillow==11.1.0
+
+# Data loading
+openpyxl==3.1.5
+
+# Database (Module 2)
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36
+
+# Utilities
+python-dotenv==1.0.1
+structlog==24.4.0
+httpx==0.28.1

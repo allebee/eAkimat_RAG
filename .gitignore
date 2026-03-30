@@ -1,0 +1,39 @@
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Data / Storage
+storage/
+chroma_db/
+extracted_figures/
+*.jpeg
+*.png
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Old MVP files (archived)
+claude_test.py
+claude_test_pdf.py
+test.py
+test.ipynb
+main2.py
+photo_*.jpeg

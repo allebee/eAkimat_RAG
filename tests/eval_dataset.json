@@ -1,0 +1,210 @@
+[
+  {
+    "id": "kb_01",
+    "question": "Как добавить сотрудника в штатное расписание?",
+    "module": "knowledge_base",
+    "expected_topic": "staffing",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_staffing",
+    "expected_keywords": [
+      "штатное расписание",
+      "добавить",
+      "сотрудник",
+      "отдел"
+    ],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_02",
+    "question": "Как создать форму расчетов для ГУ?",
+    "module": "knowledge_base",
+    "expected_topic": "calculation_forms",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_forms",
+    "expected_keywords": ["форма расчетов", "ГУ", "создать"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_03",
+    "question": "Как заполнить свод по АБП?",
+    "module": "knowledge_base",
+    "expected_topic": "svod_abp_gu_gkkp",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_svod",
+    "expected_keywords": ["свод", "АБП"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_04",
+    "question": "Как работать с БИП в системе?",
+    "module": "knowledge_base",
+    "expected_topic": "bip",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_bip",
+    "expected_keywords": ["БИП", "бюджетные инвестиционные", "проект"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_05",
+    "question": "Как установить лимиты по расходам?",
+    "module": "knowledge_base",
+    "expected_topic": "limits",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_limits",
+    "expected_keywords": ["лимиты", "расходы"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_06",
+    "question": "Как АБП вернуть БЗ на доработку в ГУ?",
+    "module": "knowledge_base",
+    "expected_topic": "svod_abp_gu_gkkp",
+    "expected_regime": "budget_planning",
+    "context_page": null,
+    "expected_keywords": ["вернуть", "доработку", "АБП", "ГУ"],
+    "should_have_media": false,
+    "category": "faq"
+  },
+  {
+    "id": "kb_07",
+    "question": "Как создать индивидуальный план финансирования?",
+    "module": "knowledge_base",
+    "expected_topic": "ipf",
+    "expected_regime": "budget_execution",
+    "context_page": "page_execution_ipf",
+    "expected_keywords": ["индивидуальный план", "финансирования", "ИПФ"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_08",
+    "question": "Как настроить права доступа в системе?",
+    "module": "knowledge_base",
+    "expected_topic": "registration_access",
+    "expected_regime": "budget_planning",
+    "context_page": null,
+    "expected_keywords": ["права доступа", "регистрационные", "доступ"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_09",
+    "question": "Где найти кнопку добавления версии штатного расписания?",
+    "module": "knowledge_base",
+    "expected_topic": "staffing",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_staffing",
+    "expected_keywords": [
+      "версия",
+      "штатного расписания",
+      "кнопка",
+      "добавить"
+    ],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "kb_10",
+    "question": "Как сформировать доходную часть бюджета?",
+    "module": "knowledge_base",
+    "expected_topic": "income_formation",
+    "expected_regime": "budget_planning",
+    "context_page": null,
+    "expected_keywords": ["доходная часть", "сформировать", "доходы"],
+    "should_have_media": true,
+    "category": "instruction"
+  },
+  {
+    "id": "analytics_01",
+    "question": "Какой общий бюджет в 2024 году?",
+    "module": "analytics",
+    "expected_topic": null,
+    "expected_regime": null,
+    "context_page": null,
+    "expected_keywords": ["312 800 000 000", "тг", "2024"],
+    "should_have_media": false,
+    "category": "budget"
+  },
+  {
+    "id": "analytics_02",
+    "question": "Покажи расходы за 2023 год",
+    "module": "analytics",
+    "expected_topic": null,
+    "expected_regime": null,
+    "context_page": null,
+    "expected_keywords": ["271 130 000 000", "95", "2023"],
+    "should_have_media": false,
+    "category": "expenditure"
+  },
+  {
+    "id": "analytics_03",
+    "question": "Какой план доходов на 2025 год?",
+    "module": "analytics",
+    "expected_topic": null,
+    "expected_regime": null,
+    "context_page": null,
+    "expected_keywords": ["355 800 000 000", "2025", "доход"],
+    "should_have_media": false,
+    "category": "income"
+  },
+  {
+    "id": "analytics_04",
+    "question": "Сколько выделено на управление образования в 2025?",
+    "module": "analytics",
+    "expected_topic": null,
+    "expected_regime": null,
+    "context_page": null,
+    "expected_keywords": ["54 200 000 000", "образования"],
+    "should_have_media": false,
+    "category": "budget"
+  },
+  {
+    "id": "context_01",
+    "question": "Как здесь добавить новую запись?",
+    "module": "knowledge_base",
+    "expected_topic": "staffing",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_staffing",
+    "expected_keywords": ["добавить", "штатное"],
+    "should_have_media": true,
+    "category": "context_navigation"
+  },
+  {
+    "id": "context_02",
+    "question": "Что делать на этой странице?",
+    "module": "knowledge_base",
+    "expected_topic": "bip",
+    "expected_regime": "budget_planning",
+    "context_page": "page_budget_bip",
+    "expected_keywords": ["БИП", "инвестиционн"],
+    "should_have_media": true,
+    "category": "context_navigation"
+  },
+  {
+    "id": "mixed_01",
+    "question": "Не понимаю как заполнить форму, покажи видео",
+    "module": "knowledge_base",
+    "expected_topic": null,
+    "expected_regime": null,
+    "context_page": null,
+    "expected_keywords": ["видео", "youtube.com"],
+    "should_have_media": true,
+    "category": "video_fallback"
+  },
+  {
+    "id": "edge_01",
+    "question": "Как починить принтер?",
+    "module": "knowledge_base",
+    "expected_topic": null,
+    "expected_regime": null,
+    "context_page": null,
+    "expected_keywords": ["не найден", "поддержк"],
+    "should_have_media": false,
+    "category": "out_of_scope"
+  }
+]

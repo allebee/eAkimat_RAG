@@ -1,0 +1,426 @@
+{
+  "timestamp": "2026-03-30 07:08:09",
+  "dataset_size": 18,
+  "retrieval": {
+    "total": 12,
+    "hits": 11,
+    "mrr_sum": 11.0,
+    "precision_sum": 10.4,
+    "with_images": 9,
+    "expected_images": 11,
+    "details": [
+      {
+        "id": "kb_01",
+        "question": "Как добавить сотрудника в штатное расписание?",
+        "expected_topic": "staffing",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "staffing",
+        "top_distance": 0.299,
+        "has_image": true
+      },
+      {
+        "id": "kb_02",
+        "question": "Как создать форму расчетов для ГУ?",
+        "expected_topic": "calculation_forms",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "calculation_forms",
+        "top_distance": 0.315,
+        "has_image": false
+      },
+      {
+        "id": "kb_03",
+        "question": "Как заполнить свод по АБП?",
+        "expected_topic": "svod_abp_gu_gkkp",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "svod_abp_gu_gkkp",
+        "top_distance": 0.443,
+        "has_image": true
+      },
+      {
+        "id": "kb_04",
+        "question": "Как работать с БИП в системе?",
+        "expected_topic": "bip",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "bip",
+        "top_distance": 0.446,
+        "has_image": true
+      },
+      {
+        "id": "kb_05",
+        "question": "Как установить лимиты по расходам?",
+        "expected_topic": "limits",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "limits",
+        "top_distance": 0.318,
+        "has_image": true
+      },
+      {
+        "id": "kb_06",
+        "question": "Как АБП вернуть БЗ на доработку в ГУ?",
+        "expected_topic": "svod_abp_gu_gkkp",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 0.4,
+        "top_result_topic": "svod_abp_gu_gkkp",
+        "top_distance": 0.037,
+        "has_image": true
+      },
+      {
+        "id": "kb_07",
+        "question": "Как создать индивидуальный план финансирования?",
+        "expected_topic": "ipf",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "ipf",
+        "top_distance": 0.264,
+        "has_image": false
+      },
+      {
+        "id": "kb_08",
+        "question": "Как настроить права доступа в системе?",
+        "expected_topic": "registration_access",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "registration_access",
+        "top_distance": 0.452,
+        "has_image": true
+      },
+      {
+        "id": "kb_09",
+        "question": "Где найти кнопку добавления версии штатного расписания?",
+        "expected_topic": "staffing",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "staffing",
+        "top_distance": 0.432,
+        "has_image": true
+      },
+      {
+        "id": "kb_10",
+        "question": "Как сформировать доходную часть бюджета?",
+        "expected_topic": "income_formation",
+        "hit": false,
+        "rr": 0.0,
+        "precision": 0.0,
+        "top_result_topic": "инструкция_формирование_доходнои_части",
+        "top_distance": 0.401,
+        "has_image": true
+      },
+      {
+        "id": "context_01",
+        "question": "Как здесь добавить новую запись?",
+        "expected_topic": "staffing",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "staffing",
+        "top_distance": 0.521,
+        "has_image": true
+      },
+      {
+        "id": "context_02",
+        "question": "Что делать на этой странице?",
+        "expected_topic": "bip",
+        "hit": true,
+        "rr": 1.0,
+        "precision": 1.0,
+        "top_result_topic": "bip",
+        "top_distance": 0.606,
+        "has_image": true
+      }
+    ]
+  },
+  "answers": {
+    "total": 18,
+    "keyword_hits": 43,
+    "keyword_total": 50,
+    "module_correct": 18,
+    "media_correct": 17,
+    "details": [
+      {
+        "id": "kb_01",
+        "question": "Как добавить сотрудника в штатное расписание?",
+        "keyword_score": 1.0,
+        "matched": [
+          "штатное расписание",
+          "добавить",
+          "сотрудник",
+          "отдел"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 1490,
+        "time_s": 8.2
+      },
+      {
+        "id": "kb_02",
+        "question": "Как создать форму расчетов для ГУ?",
+        "keyword_score": 1.0,
+        "matched": [
+          "форма расчетов",
+          "ГУ",
+          "создать"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 803,
+        "time_s": 4.3
+      },
+      {
+        "id": "kb_03",
+        "question": "Как заполнить свод по АБП?",
+        "keyword_score": 1.0,
+        "matched": [
+          "свод",
+          "АБП"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 1882,
+        "time_s": 7.0
+      },
+      {
+        "id": "kb_04",
+        "question": "Как работать с БИП в системе?",
+        "keyword_score": 1.0,
+        "matched": [
+          "БИП",
+          "бюджетные инвестиционные",
+          "проект"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 2790,
+        "time_s": 7.7
+      },
+      {
+        "id": "kb_05",
+        "question": "Как установить лимиты по расходам?",
+        "keyword_score": 1.0,
+        "matched": [
+          "лимиты",
+          "расходы"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 1609,
+        "time_s": 6.4
+      },
+      {
+        "id": "kb_06",
+        "question": "Как АБП вернуть БЗ на доработку в ГУ?",
+        "keyword_score": 1.0,
+        "matched": [
+          "вернуть",
+          "доработку",
+          "АБП",
+          "ГУ"
+        ],
+        "missed": [],
+        "media_correct": false,
+        "module_correct": true,
+        "answer_len": 1922,
+        "time_s": 5.8
+      },
+      {
+        "id": "kb_07",
+        "question": "Как создать индивидуальный план финансирования?",
+        "keyword_score": 0.67,
+        "matched": [
+          "индивидуальный план",
+          "финансирования"
+        ],
+        "missed": [
+          "ИПФ"
+        ],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 1696,
+        "time_s": 8.7
+      },
+      {
+        "id": "kb_08",
+        "question": "Как настроить права доступа в системе?",
+        "keyword_score": 1.0,
+        "matched": [
+          "права доступа",
+          "регистрационные",
+          "доступ"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 957,
+        "time_s": 3.6
+      },
+      {
+        "id": "kb_09",
+        "question": "Где найти кнопку добавления версии штатного расписания?",
+        "keyword_score": 0.5,
+        "matched": [
+          "штатного расписания",
+          "кнопка"
+        ],
+        "missed": [
+          "версия",
+          "добавить"
+        ],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 411,
+        "time_s": 2.8
+      },
+      {
+        "id": "kb_10",
+        "question": "Как сформировать доходную часть бюджета?",
+        "keyword_score": 0.33,
+        "matched": [
+          "доходы"
+        ],
+        "missed": [
+          "доходная часть",
+          "сформировать"
+        ],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 1231,
+        "time_s": 4.5
+      },
+      {
+        "id": "analytics_01",
+        "question": "Какой общий бюджет в 2024 году?",
+        "keyword_score": 1.0,
+        "matched": [
+          "312 800 000 000",
+          "тг",
+          "2024"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 55,
+        "time_s": 1.4
+      },
+      {
+        "id": "analytics_02",
+        "question": "Покажи расходы за 2023 год",
+        "keyword_score": 1.0,
+        "matched": [
+          "271 130 000 000",
+          "95",
+          "2023"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 120,
+        "time_s": 1.9
+      },
+      {
+        "id": "analytics_03",
+        "question": "Какой план доходов на 2025 год?",
+        "keyword_score": 1.0,
+        "matched": [
+          "355 800 000 000",
+          "2025",
+          "доход"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 70,
+        "time_s": 2.4
+      },
+      {
+        "id": "analytics_04",
+        "question": "Сколько выделено на управление образования в 2025?",
+        "keyword_score": 1.0,
+        "matched": [
+          "54 200 000 000",
+          "образования"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 65,
+        "time_s": 1.4
+      },
+      {
+        "id": "context_01",
+        "question": "Как здесь добавить новую запись?",
+        "keyword_score": 1.0,
+        "matched": [
+          "добавить",
+          "штатное"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 783,
+        "time_s": 3.5
+      },
+      {
+        "id": "context_02",
+        "question": "Что делать на этой странице?",
+        "keyword_score": 1.0,
+        "matched": [
+          "БИП",
+          "инвестиционн"
+        ],
+        "missed": [],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 1150,
+        "time_s": 4.4
+      },
+      {
+        "id": "mixed_01",
+        "question": "Не понимаю как заполнить форму, покажи видео",
+        "keyword_score": 0.5,
+        "matched": [
+          "видео"
+        ],
+        "missed": [
+          "youtube.com"
+        ],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 237,
+        "time_s": 1.1
+      },
+      {
+        "id": "edge_01",
+        "question": "Как починить принтер?",
+        "keyword_score": 0.5,
+        "matched": [
+          "поддержк"
+        ],
+        "missed": [
+          "не найден"
+        ],
+        "media_correct": true,
+        "module_correct": true,
+        "answer_len": 339,
+        "time_s": 1.1
+      }
+    ]
+  }
+}
