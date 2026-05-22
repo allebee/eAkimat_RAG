@@ -222,9 +222,30 @@ class PDFLoader:
 
         page_text = "\n".join(text_parts)
 
-        # Insert image markers
-        for img in images:
-            page_text += f"\n[IMAGE: {img['filename']}]"
+        # Smart image placement: insert [IMAGE:] right after "Рис." references
+        # Pattern matches "Рис. X.Y", "рис. X.Y", "Рисунок X"
+        fig_pattern = re.compile(r"((?:Рис(?:унок)?\.?\s*\d[\d.]*[^\n]*))", re.IGNORECASE)
+        fig_matches = list(fig_pattern.finditer(page_text))
+
+        used_images: set = set()
+        if fig_matches and images:
+            # Assign images to figure references in order
+            for i, match in enumerate(fig_matches):
+                if i < len(images):
+                    img = images[i]
+                    marker = f"\n[IMAGE: {img['filename']}]"
+                    # Insert marker right after the figure reference
+                    insert_pos = match.end()
+                    page_text = page_text[:insert_pos] + marker + page_text[insert_pos:]
+                    used_images.add(i)
+                    # Adjust positions for subsequent matches (offset by marker length)
+                    offset = len(marker)
+                    fig_matches = list(fig_pattern.finditer(page_text))
+
+        # Append remaining images that couldn't be matched to figure refs
+        for i, img in enumerate(images):
+            if i not in used_images:
+                page_text += f"\n[IMAGE: {img['filename']}]"
 
         return page_text, images
 

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, Header, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas import (
     ChatRequest,
@@ -28,27 +31,57 @@ router = APIRouter()
 _conversations: Dict[str, list] = {}
 
 
-def _extract_media(text: str) -> tuple[str, List[MediaBlock]]:
-    """Extract [IMAGE: ...] and [VIDEO: ...] markers from text.
+def _encode_image_url(filename: str) -> str:
+    """Build a fully encoded /images/ URL from a raw filename."""
+    filename = filename.strip()
+    if filename.startswith("/images/"):
+        filename = filename[len("/images/"):]
+    return f"/images/{quote(filename)}"
 
-    Returns clean text and list of media blocks.
+
+_IMAGE_DIR = Path("storage/images")
+_MIN_IMAGE_SIZE = 15_000  # 15 KB — skip logos/branding smaller than this
+
+
+def _process_inline_images(text: str) -> str:
+    """Convert [IMAGE: filename] markers to inline <img> HTML tags.
+
+    Skips small images (<15 KB) which are typically PDF header/footer
+    logos, watermarks, or branding elements — not useful screenshots.
     """
-    media: List[MediaBlock] = []
+    def _replace_image(match):
+        raw = match.group(1).strip()
+        # Get the bare filename (strip /images/ prefix if present)
+        filename = raw
+        if filename.startswith("/images/"):
+            filename = filename[len("/images/"):]
 
-    # Extract images
-    for match in re.finditer(r"\[IMAGE:\s*(.+?)\]", text):
-        media.append(MediaBlock(type="image", url=match.group(1).strip()))
+        # Check if the image file exists and is large enough
+        img_path = _IMAGE_DIR / filename
+        if img_path.exists() and img_path.stat().st_size < _MIN_IMAGE_SIZE:
+            # Too small — likely a logo/branding image, skip it
+            return ""
 
-    # Extract videos
+        url = _encode_image_url(raw)
+        return f'\n<img src="{url}" class="inline-screenshot" loading="lazy" alt="Скриншот инструкции"/>\n'
+
+    return re.sub(r"\[IMAGE:\s*(.+?)\]", _replace_image, text)
+
+
+def _extract_videos(text: str) -> tuple[str, List[MediaBlock]]:
+    """Extract [VIDEO: url] markers and return clean text + video blocks."""
+    videos: List[MediaBlock] = []
+
     for match in re.finditer(r"\[VIDEO:\s*(.+?)\]", text):
-        media.append(MediaBlock(type="video", url=match.group(1).strip()))
+        url = match.group(1).strip()
+        # Only include real URLs, not hallucinated ones
+        if url.startswith("http") and "example.com" not in url:
+            videos.append(MediaBlock(type="video", url=url))
 
-    # Clean markers from text
-    clean_text = re.sub(r"\[IMAGE:\s*.+?\]", "", text)
-    clean_text = re.sub(r"\[VIDEO:\s*.+?\]", "", clean_text)
-    clean_text = re.sub(r"\n{3,}", "\n\n", clean_text).strip()
+    clean = re.sub(r"\[VIDEO:\s*.+?\]", "", text)
+    clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
 
-    return clean_text, media
+    return clean, videos
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -56,15 +89,11 @@ async def chat(
     request: ChatRequest,
     x_current_context: Optional[str] = Header(None),
 ) -> ChatResponse:
-    """Main chat endpoint — processes user questions through the RAG agent.
-
-    The frontend sends the user's current page context via X-Current-Context header.
-    """
+    """Main chat endpoint — processes user questions through the RAG agent."""
     from langchain_core.messages import AIMessage, HumanMessage
 
     from app.agent.graph import run_agent
 
-    # Manage conversation history
     conv_id = request.conversation_id or str(uuid.uuid4())
     history = _conversations.get(conv_id, [])
 
@@ -77,25 +106,27 @@ async def chat(
     )
 
     try:
-        # Run the agent
         raw_response = await run_agent(
             message=request.message,
             context_page=x_current_context,
             language=request.language,
-            chat_history=history[-10:],  # Keep last 10 messages for context
+            chat_history=history[-10:],
         )
 
-        # Extract media from response
-        answer_text, media_blocks = _extract_media(raw_response)
+        # 1. Convert [IMAGE:] markers to inline <img> tags
+        answer_with_images = _process_inline_images(raw_response)
 
-        # Update conversation history
+        # 2. Extract [VIDEO:] into separate media blocks (shown at bottom)
+        answer_text, video_blocks = _extract_videos(answer_with_images)
+
+        # Update conversation history (store raw response for LLM context)
         history.append(HumanMessage(content=request.message))
         history.append(AIMessage(content=raw_response))
         _conversations[conv_id] = history
 
         return ChatResponse(
             answer=answer_text,
-            media=media_blocks,
+            media=video_blocks,
             sources=[],
             conversation_id=conv_id,
         )
@@ -103,6 +134,73 @@ async def chat(
     except Exception as exc:
         logger.exception("Agent error: %s", exc)
         raise HTTPException(status_code=500, detail=f"Agent error: {str(exc)}")
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    request: ChatRequest,
+    x_current_context: Optional[str] = Header(None),
+):
+    """SSE streaming endpoint — streams agent response token by token."""
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    from app.agent.graph import run_agent
+
+    conv_id = request.conversation_id or str(uuid.uuid4())
+    history = _conversations.get(conv_id, [])
+
+    async def event_stream():
+        try:
+            raw_response = await run_agent(
+                message=request.message,
+                context_page=x_current_context,
+                language=request.language,
+                chat_history=history[-10:],
+            )
+
+            # Process images inline
+            answer_with_images = _process_inline_images(raw_response)
+            answer_text, video_blocks = _extract_videos(answer_with_images)
+
+            # Stream answer in smart chunks — keep <img> tags intact
+            # Split on newlines so each line (including <img> tags) is sent whole
+            lines = answer_text.split("\n")
+            for i, line in enumerate(lines):
+                chunk = line + ("\n" if i < len(lines) - 1 else "")
+                if chunk:
+                    data = json.dumps({"type": "text", "content": chunk}, ensure_ascii=False)
+                    yield f"data: {data}\n\n"
+
+            # Send video blocks if any
+            for video in video_blocks:
+                data = json.dumps(
+                    {"type": "video", "url": video.url}, ensure_ascii=False
+                )
+                yield f"data: {data}\n\n"
+
+            # Send done signal
+            data = json.dumps({"type": "done", "conversation_id": conv_id})
+            yield f"data: {data}\n\n"
+
+            # Update history
+            history.append(HumanMessage(content=request.message))
+            history.append(AIMessage(content=raw_response))
+            _conversations[conv_id] = history
+
+        except Exception as exc:
+            logger.exception("Stream error: %s", exc)
+            data = json.dumps({"type": "error", "content": str(exc)})
+            yield f"data: {data}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -118,9 +216,6 @@ async def health() -> HealthResponse:
         doc_count = -1
 
     pg_connected = False
-    if settings.postgres_dsn and settings.postgres_dsn != "postgresql://readonly_user:password@localhost:5432/eakimat365":
-        # TODO: actual PG health check
-        pg_connected = False
 
     return HealthResponse(
         status="ok" if doc_count >= 0 else "degraded",

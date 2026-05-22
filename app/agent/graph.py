@@ -12,12 +12,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
 from app.agent.prompts import build_system_prompt
-from app.agent.tools.analytics import (
-    get_budget_amount,
-    get_expenditure_fact,
-    get_income_plan,
-    get_kpi_status,
-)
+from app.agent.tools.db_query import query_database
 from app.agent.tools.knowledge_base import search_knowledge_base
 from app.config import settings
 from app.knowledge.context_mapping import get_page_label
@@ -27,10 +22,7 @@ logger = logging.getLogger(__name__)
 # All available tools
 ALL_TOOLS = [
     search_knowledge_base,
-    get_budget_amount,
-    get_expenditure_fact,
-    get_income_plan,
-    get_kpi_status,
+    query_database,
 ]
 
 

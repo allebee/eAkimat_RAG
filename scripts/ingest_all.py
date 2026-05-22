@@ -5,6 +5,8 @@ Usage:
     python scripts/ingest_all.py
     python scripts/ingest_all.py --clear
     python scripts/ingest_all.py --pdf-dir ./pdf --faq ./prod_data/FAQ.xlsx
+    python scripts/ingest_all.py --video-only
+    python scripts/ingest_all.py --pdf-instructions-only
 """
 
 from __future__ import annotations
@@ -30,10 +32,35 @@ def main():
         "--instructions", default="./prod_data/instructions.xlsx",
         help="Path to instructions Excel file",
     )
+    parser.add_argument(
+        "--video-dir", default="./video_instructions/output_dataset",
+        help="Path to video RAG dataset directory (with _rag.json files)",
+    )
+    parser.add_argument(
+        "--pdf-instructions-dir", default="./pdf_instructions",
+        help="Path to new clean PDF instructions directory",
+    )
+    parser.add_argument(
+        "--calls-dir", default="./MP3toTXT",
+        help="Path to directory with Whisper-transcribed support calls (.txt)",
+    )
+    parser.add_argument(
+        "--calls-no-llm", action="store_true",
+        help="Skip Grok cleaning for calls; ingest raw transcripts only (debug)",
+    )
     parser.add_argument("--clear", action="store_true", help="Clear existing data before ingesting")
-    parser.add_argument("--faq-only", action="store_true", help="Only ingest FAQ (skip PDFs)")
-    parser.add_argument("--pdf-only", action="store_true", help="Only ingest PDFs (skip FAQ)")
+    parser.add_argument("--faq-only", action="store_true", help="Only ingest FAQ")
+    parser.add_argument("--pdf-only", action="store_true", help="Only ingest PDFs (original)")
+    parser.add_argument("--video-only", action="store_true", help="Only ingest video RAG data")
+    parser.add_argument("--pdf-instructions-only", action="store_true", help="Only ingest new PDF instructions")
+    parser.add_argument("--calls-only", action="store_true", help="Only ingest support call transcripts")
     args = parser.parse_args()
+
+    # Determine what to ingest
+    ingest_all = not any([
+        args.faq_only, args.pdf_only, args.video_only,
+        args.pdf_instructions_only, args.calls_only,
+    ])
 
     logging.basicConfig(
         level=logging.INFO,
@@ -53,8 +80,8 @@ def main():
 
     total_docs = 0
 
-    # --- FAQ ---
-    if not args.pdf_only:
+    # --- STEP 1: FAQ ---
+    if ingest_all or args.faq_only:
         logger.info("=" * 60)
         logger.info("STEP 1: Loading FAQ from %s", args.faq)
         logger.info("=" * 60)
@@ -73,8 +100,8 @@ def main():
         else:
             logger.warning("⚠️  No FAQ documents loaded")
 
-    # --- PDFs ---
-    if not args.faq_only:
+    # --- STEP 2: Original PDFs ---
+    if ingest_all or args.pdf_only:
         logger.info("=" * 60)
         logger.info("STEP 2: Processing PDFs from %s", args.pdf_dir)
         logger.info("=" * 60)
@@ -105,8 +132,8 @@ def main():
                     total_docs += len(chunks)
                     logger.info("  → %d chunks", len(chunks))
 
-    # --- Instructions (navigation tree) ---
-    if not args.pdf_only and not args.faq_only:
+    # --- STEP 3: Navigation tree ---
+    if ingest_all:
         logger.info("=" * 60)
         logger.info("STEP 3: Building navigation tree")
         logger.info("=" * 60)
@@ -120,6 +147,88 @@ def main():
                 logger.info("✅ Navigation tree saved (%d entries)", len(entries))
         else:
             logger.warning("⚠️  Instructions file not found: %s", instructions_path)
+
+    # --- STEP 4: Video RAG (transcriptions + frames) ---
+    if ingest_all or args.video_only:
+        logger.info("=" * 60)
+        logger.info("STEP 4: Loading Video RAG data from %s", args.video_dir)
+        logger.info("=" * 60)
+
+        from app.ingestion.video_rag_loader import load_all_video_rag
+        video_docs = load_all_video_rag(args.video_dir)
+
+        if video_docs:
+            # Batch upsert in chunks of 100 to avoid memory issues
+            batch_size = 100
+            for batch_start in range(0, len(video_docs), batch_size):
+                batch = video_docs[batch_start:batch_start + batch_size]
+                store.add_documents(
+                    texts=[d["content"] for d in batch],
+                    metadatas=[d["metadata"] for d in batch],
+                    ids=[d["id"] for d in batch],
+                )
+            total_docs += len(video_docs)
+            logger.info("✅ Ingested %d video RAG documents", len(video_docs))
+        else:
+            logger.warning("⚠️  No video RAG documents loaded")
+
+    # --- STEP 5: New PDF instructions (from analyst) ---
+    if ingest_all or args.pdf_instructions_only:
+        logger.info("=" * 60)
+        logger.info("STEP 5: Processing new PDF instructions from %s", args.pdf_instructions_dir)
+        logger.info("=" * 60)
+
+        pdf_instr_dir = Path(args.pdf_instructions_dir)
+        if not pdf_instr_dir.exists():
+            logger.warning("⚠️  PDF instructions directory not found: %s", pdf_instr_dir)
+        else:
+            from app.ingestion.pdf_loader import PDFLoader
+
+            pdf_files = sorted(pdf_instr_dir.glob("*.pdf"))
+            logger.info("Found %d PDF instruction files", len(pdf_files))
+
+            loader = PDFLoader()
+            for i, pdf_path in enumerate(pdf_files, 1):
+                title = pdf_path.stem
+                logger.info("[%d/%d] Processing: %s", i, len(pdf_files), title)
+                chunks = loader.load_pdf(str(pdf_path), title=title)
+                if chunks:
+                    # Tag as pdf_instruction to differentiate
+                    for c in chunks:
+                        c["metadata"]["source_type"] = "pdf_instruction"
+                    store.add_documents(
+                        texts=[c["content"] for c in chunks],
+                        metadatas=[c["metadata"] for c in chunks],
+                        ids=[c["id"] for c in chunks],
+                    )
+                    total_docs += len(chunks)
+                    logger.info("  → %d chunks", len(chunks))
+
+    # --- STEP 6: Support call transcripts ---
+    if ingest_all or args.calls_only:
+        logger.info("=" * 60)
+        logger.info("STEP 6: Loading support calls from %s", args.calls_dir)
+        logger.info("=" * 60)
+
+        from app.ingestion.call_loader import load_all_calls
+        call_docs = load_all_calls(
+            args.calls_dir,
+            use_llm=not args.calls_no_llm,
+        )
+
+        if call_docs:
+            batch_size = 100
+            for batch_start in range(0, len(call_docs), batch_size):
+                batch = call_docs[batch_start:batch_start + batch_size]
+                store.add_documents(
+                    texts=[d["content"] for d in batch],
+                    metadatas=[d["metadata"] for d in batch],
+                    ids=[d["id"] for d in batch],
+                )
+            total_docs += len(call_docs)
+            logger.info("✅ Ingested %d support-call documents", len(call_docs))
+        else:
+            logger.warning("⚠️  No support-call documents loaded")
 
     # --- Summary ---
     elapsed = time.time() - start_time
