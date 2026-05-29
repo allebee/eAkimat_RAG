@@ -238,6 +238,26 @@
       .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
       .send-btn svg { width: 18px; height: 18px; fill: white; }
 
+      .mic-btn {
+        width: 42px; height: 42px; background: var(--bg-input);
+        border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s; flex-shrink: 0;
+      }
+      .mic-btn:hover { border-color: var(--accent); }
+      .mic-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .mic-btn svg { width: 18px; height: 18px; fill: var(--text-secondary); }
+      .mic-btn.recording {
+        background: #ef4444; border-color: #ef4444;
+        animation: micpulse 1.2s infinite;
+      }
+      .mic-btn.recording svg { fill: white; }
+      .mic-btn.transcribing { opacity: 0.6; cursor: wait; }
+      @keyframes micpulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+        50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+      }
+
       .input-hint { text-align: center; margin-top: 6px; font-size: 10px; color: var(--text-muted); }
 
       .module-tag {
@@ -361,11 +381,14 @@
           onkeydown="handleKeyDown(event)"
           oninput="autoResize(this)"
         ></textarea>
+        <button class="mic-btn" id="micBtn" onclick="toggleRecording()" title="Голосовой ввод">
+          <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+        </button>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
         </button>
       </div>
-      <div class="input-hint">Enter — отправить • Shift+Enter — новая строка</div>
+      <div class="input-hint" id="inputHint">Enter — отправить • Shift+Enter — новая строка • 🎤 — голосовой ввод</div>
     </div>
 
     <script>
@@ -398,6 +421,90 @@
       function sendQuickMessage(text) {
         document.getElementById("messageInput").value = text;
         sendMessage();
+      }
+
+      // ── Голосовой ввод (STT) ──────────────────────────────────────────
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+
+      async function toggleRecording() {
+        if (isRecording) {
+          stopRecording();
+        } else {
+          await startRecording();
+        }
+      }
+
+      async function startRecording() {
+        if (isLoading) return;
+        if (!navigator.mediaDevices || !window.MediaRecorder) {
+          setHint("Браузер не поддерживает запись аудио");
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+          };
+          mediaRecorder.onstop = () => {
+            stream.getTracks().forEach((t) => t.stop());
+            const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+            transcribeBlob(blob);
+          };
+          mediaRecorder.start();
+          isRecording = true;
+          const btn = document.getElementById("micBtn");
+          btn.classList.add("recording");
+          btn.title = "Остановить запись";
+          setHint("🔴 Идёт запись… нажмите 🎤 чтобы остановить");
+        } catch (err) {
+          setHint("Нет доступа к микрофону");
+        }
+      }
+
+      function stopRecording() {
+        if (mediaRecorder && isRecording) {
+          mediaRecorder.stop();
+          isRecording = false;
+          const btn = document.getElementById("micBtn");
+          btn.classList.remove("recording");
+          btn.classList.add("transcribing");
+          btn.disabled = true;
+          btn.title = "Распознавание…";
+          setHint("⏳ Распознаю речь…");
+        }
+      }
+
+      async function transcribeBlob(blob) {
+        const btn = document.getElementById("micBtn");
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "recording.webm");
+          const res = await fetch(API_BASE + "/transcribe", { method: "POST", body: form });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          const text = (data.text || "").trim();
+          if (text) {
+            document.getElementById("messageInput").value = text;
+            sendMessage();
+          } else {
+            setHint("Не удалось распознать речь — попробуйте ещё раз");
+          }
+        } catch (err) {
+          setHint("Ошибка распознавания. Сервер запущен?");
+        } finally {
+          btn.classList.remove("transcribing");
+          btn.disabled = false;
+          btn.title = "Голосовой ввод";
+        }
+      }
+
+      function setHint(msg) {
+        const hint = document.getElementById("inputHint");
+        if (hint) hint.textContent = msg;
       }
 
       async function sendMessage() {
@@ -538,6 +645,7 @@
           isLoading = false;
           document.getElementById("sendBtn").disabled = false;
           document.getElementById("messageInput").focus();
+          setHint("Enter — отправить • Shift+Enter — новая строка • 🎤 — голосовой ввод");
         }
       }
 

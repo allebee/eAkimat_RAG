@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, File, Header, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from app.api.schemas import (
@@ -21,6 +22,7 @@ from app.api.schemas import (
     IngestResponse,
     MediaBlock,
     StatsResponse,
+    TranscribeResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -201,6 +203,46 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# Lazy singleton ASR engine — the model (~720 MB) loads on first /transcribe call.
+_asr_engine = None
+_MAX_AUDIO_BYTES = 25 * 1024 * 1024  # 25 MB upload cap
+
+
+def _get_asr_engine():
+    global _asr_engine
+    if _asr_engine is None:
+        from app.asr.engine import ASREngine
+
+        logger.info("Loading ASR model (RU+KK, first request)...")
+        _asr_engine = ASREngine()
+        logger.info("ASR model loaded")
+    return _asr_engine
+
+
+@router.post("/transcribe", response_model=TranscribeResponse)
+async def transcribe(audio: UploadFile = File(...)) -> TranscribeResponse:
+    """Speech-to-text — принимает аудио (webm/ogg/wav/mp3/...) и возвращает текст.
+
+    Использует двуязычную (RU+KK) Wav2Vec2-CTC модель. Инференс блокирующий
+    и CPU-bound, поэтому выполняется в threadpool, чтобы не блокировать event loop.
+    """
+    data = await audio.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Пустой аудиофайл")
+    if len(data) > _MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Аудиофайл слишком большой (макс. 25 МБ)")
+
+    try:
+        engine = await run_in_threadpool(_get_asr_engine)
+        text = await run_in_threadpool(engine.transcribe_bytes, data)
+    except Exception as exc:
+        logger.exception("Transcription error: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Ошибка распознавания: {exc}")
+
+    logger.info("Transcribed %d bytes -> '%s'", len(data), text[:100])
+    return TranscribeResponse(text=text)
 
 
 @router.get("/health", response_model=HealthResponse)

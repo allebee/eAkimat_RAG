@@ -1,0 +1,19 @@
+name: "asr_rukk_16000"
+platform: "pytorch_libtorch"
+input [
+ {
+    name: "input__0"
+    data_type: TYPE_FP32
+    dims: [-1, -1]
+  }
+] 
+output {
+    name: "output__0"
+    data_type: TYPE_FP32
+    dims: [-1, -1, 47]
+}
+instance_group {
+  count: 1
+  kind: KIND_GPU
+}
+#optimization {  graph { level: 1 } }

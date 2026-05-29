@@ -32,6 +32,12 @@ class ChatResponse(BaseModel):
     conversation_id: str = Field(..., description="Conversation ID for continuity")
 
 
+class TranscribeResponse(BaseModel):
+    """Response from the speech-to-text endpoint."""
+
+    text: str = Field(..., description="Распознанный текст из аудио")
+
+
 class HealthResponse(BaseModel):
     """Health check response."""
 

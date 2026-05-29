@@ -30,6 +30,9 @@ extracted_figures/
 .DS_Store
 Thumbs.db
 
+# ASR model weights (~720 MB — distribute separately, see CLAUDE.md §12)
+app/asr/model/model.pt
+
 # Old MVP files (archived)
 claude_test.py
 claude_test_pdf.py
