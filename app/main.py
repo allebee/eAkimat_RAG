@@ -52,6 +52,14 @@ async def lifespan(app: FastAPI):
     pages = list_pages()
     logger.info("Context mapping loaded: %d pages", len(pages))
 
+    # Pre-load ASR model (warms GPU/CPU so the first /transcribe is fast)
+    try:
+        from app.asr.engine import get_engine
+        engine = get_engine()
+        logger.info("ASR model ready on device: %s", engine.device)
+    except Exception as exc:
+        logger.warning("ASR preload deferred: %s", exc)
+
     yield
 
     logger.info("Shutting down eAkimat365 RAG Service")

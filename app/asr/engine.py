@@ -26,7 +26,9 @@ OVERLAP_S = 2.0
 
 
 class ASREngine:
-    def __init__(self, model_path=MODEL_PATH, tokens_path=TOKENS_PATH, device="cpu"):
+    def __init__(self, model_path=MODEL_PATH, tokens_path=TOKENS_PATH, device=None):
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.model = torch.jit.load(str(model_path), map_location=device).eval()
         self.id2tok, self.blank = self._load_tokens(tokens_path)
@@ -149,8 +151,17 @@ _engine: ASREngine | None = None
 
 
 def get_engine() -> ASREngine:
-    """Ленивая singleton-загрузка (модель грузится один раз)."""
+    """Ленивая singleton-загрузка (модель грузится один раз).
+
+    На GPU прогреваем модель коротким холостым прогоном, чтобы скомпилировать
+    CUDA-ядра заранее — иначе первый реальный запрос платит за это латентностью.
+    """
     global _engine
     if _engine is None:
         _engine = ASREngine()
+        if _engine.device == "cuda":
+            try:
+                _engine._infer_chunk(np.zeros(int(0.5 * SR), dtype=np.float32))
+            except Exception:
+                pass
     return _engine

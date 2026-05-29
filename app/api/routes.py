@@ -205,20 +205,15 @@ async def chat_stream(
     )
 
 
-# Lazy singleton ASR engine — the model (~720 MB) loads on first /transcribe call.
-_asr_engine = None
+# Singleton ASR engine — preloaded at startup (see lifespan in main.py) so the
+# first /transcribe request is fast. Falls back to lazy load if preload was skipped.
 _MAX_AUDIO_BYTES = 25 * 1024 * 1024  # 25 MB upload cap
 
 
 def _get_asr_engine():
-    global _asr_engine
-    if _asr_engine is None:
-        from app.asr.engine import ASREngine
+    from app.asr.engine import get_engine
 
-        logger.info("Loading ASR model (RU+KK, first request)...")
-        _asr_engine = ASREngine()
-        logger.info("ASR model loaded")
-    return _asr_engine
+    return get_engine()
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)
