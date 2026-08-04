@@ -16,9 +16,18 @@ venv/
 # Data / Storage
 storage/
 chroma_db/
+chroma_data/
 extracted_figures/
 *.jpeg
 *.png
+
+# Large source-data dirs (distributed separately, not in git)
+call_center_transcripts/
+video_instructions/
+pdf_instructions/
+pdf/
+MP3toTXT/
+demo/
 
 # IDE
 .idea/

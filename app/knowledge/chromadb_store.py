@@ -7,11 +7,33 @@ from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from langchain_openai import OpenAIEmbeddings
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _build_embeddings():
+    """Construct the embedding backend selected by EMBEDDING_PROVIDER.
+
+    Both backends expose embed_documents / embed_query. Switching provider
+    changes the vector dimension, so the collection must be re-ingested.
+    """
+    if settings.embedding_provider == "bge":
+        from app.knowledge.bge_embeddings import BGEEmbeddings
+
+        return BGEEmbeddings(
+            model_name=settings.bge_model,
+            device=settings.bge_device,
+            batch_size=settings.bge_batch_size,
+        )
+
+    from langchain_openai import OpenAIEmbeddings
+
+    return OpenAIEmbeddings(
+        model=settings.embedding_model,
+        openai_api_key=settings.openai_api_key,
+    )
 
 
 class KnowledgeStore:
@@ -30,14 +52,12 @@ class KnowledgeStore:
             name=settings.chroma_collection,
             metadata={"hnsw:space": "cosine"},
         )
-        self._embeddings = OpenAIEmbeddings(
-            model=settings.embedding_model,
-            openai_api_key=settings.openai_api_key,
-        )
+        self._embeddings = _build_embeddings()
         logger.info(
-            "ChromaDB initialized: collection=%s, docs=%d",
+            "ChromaDB initialized: collection=%s, docs=%d, embeddings=%s",
             settings.chroma_collection,
             self._collection.count(),
+            settings.embedding_provider,
         )
 
     @classmethod

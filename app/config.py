@@ -18,19 +18,55 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # --- LLM provider switch: "grok" or "deepseek" ---
+    llm_provider: str = "grok"
+
     # --- LLM (xAI Grok) ---
     grok_api_key: str = ""
     grok_model: str = "grok-4-fast-non-reasoning"
     grok_base_url: str = "https://api.x.ai/v1"
 
-    # --- Embeddings (OpenAI — xAI has no embedding model) ---
+    # --- LLM (DeepSeek — also OpenAI-compatible) ---
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-chat"
+    deepseek_base_url: str = "https://api.deepseek.com"
+
+    # --- Embeddings ---
+    # Provider switch: "openai" (hosted API) or "bge" (local sentence-transformers).
+    # NOTE: switching provider changes the vector DIMENSION, so the whole ChromaDB
+    # collection must be re-ingested from scratch (--clear). Query- and index-time
+    # embeddings must use the same model.
+    embedding_provider: str = "openai"
+
+    # OpenAI hosted embeddings
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
+
+    # BGE local embeddings (BAAI/bge-m3 — multilingual RU+KK, 1024-dim)
+    bge_model: str = "BAAI/bge-m3"
+    bge_device: str = "auto"   # "auto" -> cuda if available else cpu; or "cuda"/"cpu"
+    bge_batch_size: int = 16
 
     @property
     def llm_model(self) -> str:
         """Active LLM model name."""
+        if self.llm_provider == "deepseek":
+            return self.deepseek_model
         return self.grok_model
+
+    @property
+    def llm_api_key(self) -> str:
+        """API key for the active LLM provider."""
+        if self.llm_provider == "deepseek":
+            return self.deepseek_api_key
+        return self.grok_api_key
+
+    @property
+    def llm_base_url(self) -> str:
+        """Base URL for the active LLM provider."""
+        if self.llm_provider == "deepseek":
+            return self.deepseek_base_url
+        return self.grok_base_url
 
     # --- ChromaDB ---
     chroma_persist_dir: str = "./chroma_data"

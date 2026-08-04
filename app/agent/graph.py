@@ -12,7 +12,6 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
 from app.agent.prompts import build_system_prompt
-from app.agent.tools.db_query import query_database
 from app.agent.tools.knowledge_base import search_knowledge_base
 from app.config import settings
 from app.knowledge.context_mapping import get_page_label
@@ -20,9 +19,11 @@ from app.knowledge.context_mapping import get_page_label
 logger = logging.getLogger(__name__)
 
 # All available tools
+# NOTE: query_database (SQL analytics) is intentionally unbound for now — the
+# analytics module is on hold. app/agent/tools/db_query.py is left untouched;
+# re-add the import and this entry to switch it back on.
 ALL_TOOLS = [
     search_knowledge_base,
-    query_database,
 ]
 
 
@@ -34,25 +35,42 @@ class AgentState(TypedDict):
     language: str
 
 
+# Cache the built LLM so all requests share one httpx connection pool to the
+# provider (rebuilding per request would open a fresh pool each time and kill
+# keep-alive under load).
+_llm_cached = None
+
+
 def _build_llm():
-    """Create the LLM instance with tool bindings.
+    """Create (once) the LLM instance with tool bindings.
 
-    Uses xAI Grok via OpenAI-compatible API.
+    Provider (Grok or DeepSeek) is picked by LLM_PROVIDER — both speak the
+    OpenAI-compatible API.
     """
-    llm = ChatOpenAI(
-        model=settings.grok_model,
-        api_key=settings.grok_api_key,
-        base_url=settings.grok_base_url,
-        temperature=0.1,
-        streaming=True,
-    )
-    return llm.bind_tools(ALL_TOOLS)
+    global _llm_cached
+    if _llm_cached is None:
+        llm = ChatOpenAI(
+            model=settings.llm_model,
+            api_key=settings.llm_api_key,
+            base_url=settings.llm_base_url,
+            temperature=0.1,
+            streaming=True,
+            timeout=90,       # DeepSeek can be slow on long answers
+            max_retries=3,    # recover from transient stream drops (RemoteProtocolError)
+        )
+        _llm_cached = llm.bind_tools(ALL_TOOLS)
+    return _llm_cached
 
 
-def _agent_node(state: AgentState) -> Dict[str, Any]:
-    """Main agent node — invokes the LLM with tools."""
+async def _agent_node(state: AgentState) -> Dict[str, Any]:
+    """Main agent node — invokes the LLM with tools.
+
+    Async so the (multi-second) provider call runs on the event loop instead of
+    blocking a threadpool thread — this is what lets many requests wait on the
+    LLM concurrently.
+    """
     llm = _build_llm()
-    response = llm.invoke(state["messages"])
+    response = await llm.ainvoke(state["messages"])
     return {"messages": [response]}
 
 

@@ -54,12 +54,21 @@ def main():
     parser.add_argument("--video-only", action="store_true", help="Only ingest video RAG data")
     parser.add_argument("--pdf-instructions-only", action="store_true", help="Only ingest new PDF instructions")
     parser.add_argument("--calls-only", action="store_true", help="Only ingest support call transcripts")
+    parser.add_argument(
+        "--call-center-jsonl",
+        default="./call_center_transcripts/all_processed_clean.jsonl",
+        help="Path to gated, post-processed call-center JSONL (from postprocess+evaluate)",
+    )
+    parser.add_argument(
+        "--call-center-only", action="store_true",
+        help="Only ingest post-processed call-center Q&A (gated JSONL)",
+    )
     args = parser.parse_args()
 
     # Determine what to ingest
     ingest_all = not any([
         args.faq_only, args.pdf_only, args.video_only,
-        args.pdf_instructions_only, args.calls_only,
+        args.pdf_instructions_only, args.calls_only, args.call_center_only,
     ])
 
     logging.basicConfig(
@@ -229,6 +238,28 @@ def main():
             logger.info("✅ Ingested %d support-call documents", len(call_docs))
         else:
             logger.warning("⚠️  No support-call documents loaded")
+
+    if ingest_all or args.call_center_only:
+        logger.info("=" * 60)
+        logger.info("STEP 7: Loading post-processed call-center Q&A from %s", args.call_center_jsonl)
+        logger.info("=" * 60)
+
+        from app.ingestion.call_center_loader import load_call_center_jsonl
+        cc_docs = load_call_center_jsonl(args.call_center_jsonl)
+
+        if cc_docs:
+            batch_size = 200
+            for batch_start in range(0, len(cc_docs), batch_size):
+                batch = cc_docs[batch_start:batch_start + batch_size]
+                store.add_documents(
+                    texts=[d["content"] for d in batch],
+                    metadatas=[d["metadata"] for d in batch],
+                    ids=[d["id"] for d in batch],
+                )
+            total_docs += len(cc_docs)
+            logger.info("✅ Ingested %d call-center Q&A documents", len(cc_docs))
+        else:
+            logger.warning("⚠️  No call-center Q&A documents loaded (run postprocess+evaluate first)")
 
     # --- Summary ---
     elapsed = time.time() - start_time

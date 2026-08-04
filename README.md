@@ -8,6 +8,9 @@ Agentic RAG на базе **FastAPI + LangGraph + ChromaDB + xAI Grok**.
 2. получить аналитику из боевой PostgreSQL (бюджет, расходы, доходы, штатка, БИП);
 3. ответить с учётом текущего модуля интерфейса (контекст страницы).
 
+Поддерживается **голосовой ввод**: вопрос можно надиктовать — речь (RU/KK)
+распознаётся локальной моделью и автоматически отправляется агенту.
+
 ---
 
 ## Архитектура
@@ -15,7 +18,8 @@ Agentic RAG на базе **FastAPI + LangGraph + ChromaDB + xAI Grok**.
 ```
 ┌──────────────┐      ┌──────────────────────────────┐
 │  demo.html   │ ←──→ │  FastAPI (app/api/routes.py) │
-│  (frontend)  │      │  /api/chat   /api/chat/stream │
+│  (frontend)  │      │  /api/chat  /api/chat/stream  │
+│              │      │  /api/transcribe (STT)        │
 └──────────────┘      └──────────────┬───────────────┘
                                      │
                       ┌──────────────▼──────────────┐
@@ -50,8 +54,11 @@ csi_rag/
 │   ├── main.py                       # FastAPI app, lifespan, static /images/
 │   ├── config.py                     # Pydantic settings (.env)
 │   ├── api/
-│   │   ├── routes.py                 # /api/chat, /api/chat/stream, /api/health, /api/stats
+│   │   ├── routes.py                 # /api/chat, /api/chat/stream, /api/transcribe, /api/health, /api/stats
 │   │   └── schemas.py                # Pydantic request/response модели
+│   ├── asr/                          # Голосовой ввод (STT)
+│   │   ├── engine.py                 # RU+KK Wav2Vec2-CTC движок (greedy decode)
+│   │   └── model/                    # model.pt (~720 МБ, НЕ в git), tokens.lst, config.pbtxt
 │   ├── agent/
 │   │   ├── graph.py                  # LangGraph (agent ↔ tools)
 │   │   ├── prompts.py                # Системный промпт (RU/KK)
@@ -93,6 +100,7 @@ video_instructions/    # JSON-транскрипты + кадры               
 MP3toTXT/              # Whisper-транскрипты звонков             ~0.9 МБ
 chroma_data/           # ChromaDB persistence (готовый индекс)   ~130 МБ
 storage/images/        # Скриншоты из PDF и кадры из видео       ~340 МБ
+app/asr/model/model.pt # ASR-модель для голосового ввода (STT)   ~720 МБ
 .env                   # Секреты
 ```
 
@@ -111,6 +119,33 @@ storage/images/        # Скриншоты из PDF и кадры из виде
 
 Выполнение: новый event loop в отдельном потоке + `asyncpg.connect()` (не пул).
 Причина: LangGraph-инструмент работает в `ThreadPoolExecutor`, и shared-пул в чужом event loop ломается с `another operation is in progress`.
+
+---
+
+## Голосовой ввод (Speech-to-Text)
+
+Кнопка 🎤 в `demo.html` записывает речь через `MediaRecorder`, отправляет аудио на
+`/api/transcribe`, а распознанный текст вставляется в поле ввода и **сразу отправляется**
+агенту (как голосовой режим ChatGPT).
+
+**Эндпоинт:** `POST /api/transcribe` — `multipart/form-data` с полем `audio`
+(webm/ogg/wav/mp3/m4a/…), ответ `{"text": "распознанный текст"}`.
+
+```bash
+curl -s -X POST http://localhost:8000/api/transcribe -F "audio=@запись.wav"
+# -> {"text":"как заполнить штатное расписание"}
+```
+
+**Движок:** `app/asr/engine.py` — двуязычная (RU+KK) Wav2Vec2-CTC модель (3iTech,
+TorchScript, greedy CTC). Грузится лениво синглтоном на первый запрос (~720 МБ в память);
+инференс выполняется в threadpool (блокирующий, CPU-bound). Лимит загрузки — 25 МБ.
+
+- **Файлы модели:** `app/asr/model/{model.pt, tokens.lst, config.pbtxt}`. `model.pt` (~720 МБ)
+  **не в git** — переносится на сервер отдельно (см. раздел «Деплой»).
+- **Нужен `ffmpeg`** на хосте — для декодирования браузерного webm/opus
+  (`brew install ffmpeg` / `apt install ffmpeg`).
+- **Ограничения:** только акустическая модель — без пунктуации и заглавных букв,
+  без языковой модели/beam-search; качество выше всего на чистой одноголосой речи.
 
 ---
 
@@ -215,6 +250,9 @@ cd eAkimat_RAG
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # заполнить ключи
+
+# ffmpeg нужен для голосового ввода (декодирование webm/opus из браузера)
+sudo apt install -y ffmpeg     # Debian/Ubuntu  (macOS: brew install ffmpeg)
 ```
 
 ### 2. Данные (выбрать один из вариантов)
@@ -224,6 +262,8 @@ cp .env.example .env   # заполнить ключи
 ```bash
 rsync -avz --progress chroma_data/ user@server:/path/to/eAkimat_RAG/chroma_data/
 rsync -avz --progress storage/      user@server:/path/to/eAkimat_RAG/storage/
+# ASR-модель для голосового ввода (~720 МБ, не в git):
+rsync -avz --progress app/asr/model/model.pt user@server:/path/to/eAkimat_RAG/app/asr/model/model.pt
 ```
 
 **Вариант B — переингестить на сервере (меньше трафика).**
