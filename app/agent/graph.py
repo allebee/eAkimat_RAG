@@ -161,3 +161,68 @@ async def run_agent(
             return msg.content
 
     return "Не удалось получить ответ. Пожалуйста, попробуйте позже."
+
+
+async def stream_agent(
+    message: str,
+    context_page: Optional[str] = None,
+    language: str = "ru",
+    chat_history: Optional[List[BaseMessage]] = None,
+):
+    """Run the agent, yielding lifecycle events so the UI can show progress.
+
+    Observes the graph's node transitions via ``astream(stream_mode="updates")``
+    and maps them to human-facing stages. Yields dicts:
+
+        {"kind": "status", "stage": "thinking" | "searching" | "generating"}
+        {"kind": "answer", "content": <final answer text>}
+
+    The final answer is yielded once, whole — callers keep doing the image-safe
+    post-processing on it, so [IMAGE:] markers are never split mid-stream.
+    """
+    graph = get_graph()
+
+    page_label = get_page_label(context_page, language) if context_page else ""
+    system_prompt = build_system_prompt(
+        page_label=page_label,
+        page_id=context_page or "",
+        language=language,
+    )
+
+    messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
+    if chat_history:
+        messages.extend(chat_history)
+    messages.append(HumanMessage(content=message))
+
+    state: AgentState = {
+        "messages": messages,
+        "context_page": context_page or "",
+        "language": language,
+    }
+
+    # The first LLM call (deciding whether to use a tool) is the long silent
+    # wait — announce it up front.
+    yield {"kind": "status", "stage": "thinking"}
+
+    final_answer = ""
+    async for chunk in graph.astream(state, stream_mode="updates"):
+        for node, update in chunk.items():
+            node_msgs = (update or {}).get("messages", []) if isinstance(update, dict) else []
+            if not node_msgs:
+                continue
+            last = node_msgs[-1]
+
+            if node == "agent":
+                if getattr(last, "tool_calls", None):
+                    # Agent chose to look something up.
+                    yield {"kind": "status", "stage": "searching"}
+                elif getattr(last, "content", ""):
+                    # Agent produced the final answer (no more tool calls).
+                    final_answer = last.content
+            elif node == "tools":
+                # Search finished; the agent will now compose the answer.
+                yield {"kind": "status", "stage": "generating"}
+
+    if not final_answer:
+        final_answer = "Не удалось получить ответ. Пожалуйста, попробуйте позже."
+    yield {"kind": "answer", "content": final_answer}

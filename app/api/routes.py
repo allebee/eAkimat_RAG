@@ -138,29 +138,54 @@ async def chat(
         raise HTTPException(status_code=500, detail=f"Agent error: {str(exc)}")
 
 
+# Human-facing labels for agent lifecycle stages (shown live in the UI while
+# the user waits). Sent alongside the stage code so the frontend can display
+# them directly.
+_STATUS_LABELS = {
+    "thinking": "Думаю над вопросом…",
+    "searching": "Ищу инструкции и похожие обращения…",
+    "generating": "Формирую ответ…",
+}
+
+
 @router.post("/chat/stream")
 async def chat_stream(
     request: ChatRequest,
     x_current_context: Optional[str] = Header(None),
 ):
-    """SSE streaming endpoint — streams agent response token by token."""
+    """SSE streaming endpoint — emits live status events, then the answer."""
     from langchain_core.messages import AIMessage, HumanMessage
 
-    from app.agent.graph import run_agent
+    from app.agent.graph import stream_agent
 
     conv_id = request.conversation_id or str(uuid.uuid4())
     history = _conversations.get(conv_id, [])
 
     async def event_stream():
         try:
-            raw_response = await run_agent(
+            # 1. Drive the agent, forwarding lifecycle events as they happen.
+            raw_response = ""
+            async for ev in stream_agent(
                 message=request.message,
                 context_page=x_current_context,
                 language=request.language,
                 chat_history=history[-10:],
-            )
+            ):
+                if ev["kind"] == "status":
+                    stage = ev["stage"]
+                    data = json.dumps(
+                        {
+                            "type": "status",
+                            "stage": stage,
+                            "label": _STATUS_LABELS.get(stage, ""),
+                        },
+                        ensure_ascii=False,
+                    )
+                    yield f"data: {data}\n\n"
+                elif ev["kind"] == "answer":
+                    raw_response = ev["content"]
 
-            # Process images inline
+            # 2. Process images inline
             answer_with_images = _process_inline_images(raw_response)
             answer_text, video_blocks = _extract_videos(answer_with_images)
 
