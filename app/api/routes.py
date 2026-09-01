@@ -42,12 +42,13 @@ def _encode_image_url(filename: str) -> str:
 
 
 _IMAGE_DIR = Path("storage/images")
-# Backstop only. Logos and glyphs are now dropped at ingestion by geometry
-# (pdf_loader), which is far more accurate; this catches leftovers still
-# referenced by chunks ingested before that fix. Kept low on purpose: the
-# observed header logos are 3-4 KB, while 13% of genuine screenshots are under
-# 15 KB, so the old 15 KB threshold silently swallowed real screenshots.
-_MIN_IMAGE_SIZE = 5_000
+# Junk guard only — corrupt or blank files. Logos and glyphs are dropped at
+# ingestion by page geometry (pdf_loader), which is far more accurate than a
+# byte count, and every PDF chunk in the collection has been re-ingested through
+# that filter. Size is a poor proxy for "is this a screenshot": the header logos
+# this used to target are 3-4 KB, while genuine screenshots go down to 2.8 KB,
+# so the old 15 KB threshold silently swallowed 13% of real screenshots.
+_MIN_IMAGE_SIZE = 1_000
 
 _SOURCE_LABEL_RE = re.compile(r"^[ \t]*\[ИСТОЧНИК:[^\]]*\][ \t]*\n?", re.MULTILINE)
 
