@@ -42,14 +42,31 @@ def _encode_image_url(filename: str) -> str:
 
 
 _IMAGE_DIR = Path("storage/images")
-_MIN_IMAGE_SIZE = 15_000  # 15 KB — skip logos/branding smaller than this
+# Backstop only. Logos and glyphs are now dropped at ingestion by geometry
+# (pdf_loader), which is far more accurate; this catches leftovers still
+# referenced by chunks ingested before that fix. Kept low on purpose: the
+# observed header logos are 3-4 KB, while 13% of genuine screenshots are under
+# 15 KB, so the old 15 KB threshold silently swallowed real screenshots.
+_MIN_IMAGE_SIZE = 5_000
+
+_SOURCE_LABEL_RE = re.compile(r"^[ \t]*\[ИСТОЧНИК:[^\]]*\][ \t]*\n?", re.MULTILINE)
+
+
+def _strip_source_labels(text: str) -> str:
+    """Remove any [ИСТОЧНИК: ...] provenance lines the model echoed back.
+
+    The knowledge-base tool tags each chunk with its provenance so the agent
+    knows whose interface wording it may trust. That tag is for the agent only —
+    the prompt forbids copying it, and this strips it if the model does anyway.
+    """
+    return _SOURCE_LABEL_RE.sub("", text)
 
 
 def _process_inline_images(text: str) -> str:
     """Convert [IMAGE: filename] markers to inline <img> HTML tags.
 
-    Skips small images (<15 KB) which are typically PDF header/footer
-    logos, watermarks, or branding elements — not useful screenshots.
+    Skips images below _MIN_IMAGE_SIZE — leftover logos/branding from chunks
+    ingested before screenshot filtering moved into the PDF loader.
     """
     def _replace_image(match):
         raw = match.group(1).strip()
@@ -116,7 +133,7 @@ async def chat(
         )
 
         # 1. Convert [IMAGE:] markers to inline <img> tags
-        answer_with_images = _process_inline_images(raw_response)
+        answer_with_images = _process_inline_images(_strip_source_labels(raw_response))
 
         # 2. Extract [VIDEO:] into separate media blocks (shown at bottom)
         answer_text, video_blocks = _extract_videos(answer_with_images)
@@ -186,7 +203,7 @@ async def chat_stream(
                     raw_response = ev["content"]
 
             # 2. Process images inline
-            answer_with_images = _process_inline_images(raw_response)
+            answer_with_images = _process_inline_images(_strip_source_labels(raw_response))
             answer_text, video_blocks = _extract_videos(answer_with_images)
 
             # Stream answer in smart chunks — keep <img> tags intact

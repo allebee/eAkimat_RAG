@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import fitz  # PyMuPDF
 from PIL import Image
@@ -13,6 +14,21 @@ from PIL import Image
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# --- Screenshot filtering ---
+# The instruction PDFs embed three kinds of images, and across the 29 files only
+# ~32% of them are actual screenshots:
+#   1. page-header logos, redrawn on every page (~40% of the image stream)
+#   2. tiny inline glyphs — button icons sitting inside a sentence (~28%)
+#   3. real UI screenshots — the only ones worth showing the user
+# Ingestion used to keep all three and hand them out to "Рис. X.Y" references by
+# list index, so the first two figure references on every page were served the
+# header logos and every real screenshot landed under the wrong step.
+HEADER_PAGE_RATIO = 0.5      # same image on >= half the pages => header/watermark
+HEADER_MIN_PAGES = 3         # ...but only for documents long enough to tell
+MIN_FIGURE_HEIGHT_PT = 40.0  # rendered height; inline glyphs are ~10-25pt
+MIN_FIGURE_WIDTH_PT = 60.0
+MIN_IMAGE_BYTES = 2048       # guards against blank/solid-colour rectangles
 
 # --- Topic normalization map ---
 # Maps Russian topic names (from Excel / filenames) to normalized keys
@@ -137,10 +153,13 @@ class PDFLoader:
         all_text = ""
         images_extracted: List[Dict[str, Any]] = []
         page_count = len(doc)
+        repeated_xrefs = self._find_repeated_xrefs(doc)
 
         for page_num in range(page_count):
             page = doc[page_num]
-            page_text, page_images = self._extract_page(page, page_num + 1, path.stem)
+            page_text, page_images = self._extract_page(
+                page, page_num + 1, path.stem, repeated_xrefs
+            )
             all_text += f"\n\n--- Страница {page_num + 1} ---\n\n{page_text}"
             images_extracted.extend(page_images)
 
@@ -180,72 +199,100 @@ class PDFLoader:
 
         return documents
 
+    @staticmethod
+    def _find_repeated_xrefs(doc: fitz.Document) -> Set[int]:
+        """Images drawn on most pages — page headers, footers, watermarks.
+
+        These carry no instructional content but dominate the image stream, so
+        they must never be offered as a step's screenshot.
+        """
+        page_count = len(doc)
+        if page_count < HEADER_MIN_PAGES:
+            return set()
+
+        counts: Counter = Counter()
+        for page in doc:
+            for xref in {img[0] for img in page.get_images(full=True)}:
+                counts[xref] += 1
+
+        threshold = max(HEADER_MIN_PAGES, page_count * HEADER_PAGE_RATIO)
+        return {xref for xref, seen_on in counts.items() if seen_on >= threshold}
+
     def _extract_page(
-        self, page: fitz.Page, page_num: int, pdf_stem: str
+        self,
+        page: fitz.Page,
+        page_num: int,
+        pdf_stem: str,
+        repeated_xrefs: Set[int],
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Extract text and images from a single page."""
-        # Get text blocks with positions
-        blocks = page.get_text("blocks")
-        # Sort by vertical position (y0)
-        sorted_blocks = sorted(blocks, key=lambda b: (b[1], b[0]))
+        """Extract a page's text and screenshots, interleaved in reading order.
 
-        text_parts: List[str] = []
+        Screenshots are placed by their position on the page rather than paired
+        with "Рис. X.Y" references by list index: PDF resource order does not
+        follow the layout, and headers/glyphs shift the pairing anyway. Laying
+        text blocks and images out by coordinate puts each [IMAGE:] marker where
+        the screenshot actually sits — after the step that introduces it and
+        before its "Рис. X.Y" caption.
+        """
+        # Where each image is really drawn (get_images order is resource order).
+        bbox_by_xref: Dict[int, Any] = {}
+        for info in page.get_image_info(xrefs=True):
+            xref = info.get("xref")
+            if xref and xref not in bbox_by_xref:
+                bbox_by_xref[xref] = info.get("bbox")
+
         images: List[Dict[str, Any]] = []
+        # Page layout items as (y0, x0, text) — text blocks and image markers.
+        items: List[Tuple[float, float, str]] = []
 
-        # Extract images
-        image_list = page.get_images(full=True)
-        for img_idx, img_info in enumerate(image_list, 1):
+        for img_idx, img_info in enumerate(page.get_images(full=True), 1):
+            xref = img_info[0]
+            if xref in repeated_xrefs:
+                continue  # header logo / watermark
+
+            bbox = bbox_by_xref.get(xref)
+            if bbox is None:
+                continue  # referenced but not drawn on this page
+
+            width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            if height < MIN_FIGURE_HEIGHT_PT or width < MIN_FIGURE_WIDTH_PT:
+                continue  # inline button glyph, not a screenshot
+
             try:
-                xref = img_info[0]
                 base_image = page.parent.extract_image(xref)
-                if base_image and base_image.get("image"):
-                    img_filename = f"{pdf_stem}_page{page_num}_img{img_idx}.jpeg"
-                    img_path = settings.images_path / img_filename
-                    with open(img_path, "wb") as f:
-                        f.write(base_image["image"])
-                    images.append(
-                        {
-                            "filename": img_filename,
-                            "page": page_num,
-                            "path": str(img_path),
-                        }
-                    )
             except Exception as exc:
                 logger.debug("Failed to extract image %d from page %d: %s", img_idx, page_num, exc)
+                continue
+            if not base_image or not base_image.get("image"):
+                continue
 
-        # Build text from blocks
-        for block in sorted_blocks:
-            if block[6] == 0:  # Text block
-                text = block[4].strip()
-                if text:
-                    text_parts.append(text)
+            data = base_image["image"]
+            if len(data) < MIN_IMAGE_BYTES:
+                continue
 
-        page_text = "\n".join(text_parts)
+            img_filename = f"{pdf_stem}_page{page_num}_img{img_idx}.jpeg"
+            img_path = settings.images_path / img_filename
+            with open(img_path, "wb") as f:
+                f.write(data)
 
-        # Smart image placement: insert [IMAGE:] right after "Рис." references
-        # Pattern matches "Рис. X.Y", "рис. X.Y", "Рисунок X"
-        fig_pattern = re.compile(r"((?:Рис(?:унок)?\.?\s*\d[\d.]*[^\n]*))", re.IGNORECASE)
-        fig_matches = list(fig_pattern.finditer(page_text))
+            images.append(
+                {
+                    "filename": img_filename,
+                    "page": page_num,
+                    "path": str(img_path),
+                }
+            )
+            items.append((bbox[1], bbox[0], f"[IMAGE: {img_filename}]"))
 
-        used_images: set = set()
-        if fig_matches and images:
-            # Assign images to figure references in order
-            for i, match in enumerate(fig_matches):
-                if i < len(images):
-                    img = images[i]
-                    marker = f"\n[IMAGE: {img['filename']}]"
-                    # Insert marker right after the figure reference
-                    insert_pos = match.end()
-                    page_text = page_text[:insert_pos] + marker + page_text[insert_pos:]
-                    used_images.add(i)
-                    # Adjust positions for subsequent matches (offset by marker length)
-                    offset = len(marker)
-                    fig_matches = list(fig_pattern.finditer(page_text))
+        for block in page.get_text("blocks"):
+            if block[6] != 0:  # not a text block
+                continue
+            text = block[4].strip()
+            if text:
+                items.append((block[1], block[0], text))
 
-        # Append remaining images that couldn't be matched to figure refs
-        for i, img in enumerate(images):
-            if i not in used_images:
-                page_text += f"\n[IMAGE: {img['filename']}]"
+        items.sort(key=lambda item: (item[0], item[1]))
+        page_text = "\n".join(text for _, _, text in items)
 
         return page_text, images
 
